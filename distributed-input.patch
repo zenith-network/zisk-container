@@ -1,0 +1,209 @@
+diff --git a/distributed/crates/common/src/dto.rs b/distributed/crates/common/src/dto.rs
+index e8706d43..94de66d6 100644
+--- a/distributed/crates/common/src/dto.rs
++++ b/distributed/crates/common/src/dto.rs
+@@ -67,6 +67,7 @@ pub struct LaunchProofRequestDto {
+     pub compute_capacity: u32,
+     pub input_path: String,
+     pub simulated_node: Option<u32>,
++    pub input_data: Vec<u8>,
+ }
+ 
+ pub struct LaunchProofResponseDto {
+@@ -135,6 +136,7 @@ pub struct ContributionParamsDto {
+     pub total_workers: u32,
+     pub worker_allocation: Vec<u32>,
+     pub job_compute_units: ComputeCapacity,
++    pub input_data: Vec<u8>,
+ }
+ 
+ pub struct ProveParamsDto {
+diff --git a/distributed/crates/common/src/types.rs b/distributed/crates/common/src/types.rs
+index 85ee80bc..8e039bb0 100644
+--- a/distributed/crates/common/src/types.rs
++++ b/distributed/crates/common/src/types.rs
+@@ -243,6 +243,7 @@ impl Job {
+     pub fn new(
+         block_id: BlockId,
+         input_path: PathBuf,
++        input_data: Vec<u8>,
+         compute_capacity: ComputeCapacity,
+         selected_workers: Vec<WorkerId>,
+         partitions: Vec<Vec<u32>>,
+@@ -253,7 +254,7 @@ impl Job {
+             start_time: Utc::now(),
+             duration_ms: None,
+             state: JobState::Created,
+-            block: BlockContext { block_id, input_path },
++            block: BlockContext { block_id, input_path, input_data },
+             compute_capacity,
+             workers: selected_workers,
+             agg_worker_id: None,
+@@ -363,6 +364,7 @@ pub struct JobResult {
+ pub struct BlockContext {
+     pub block_id: BlockId,
+     pub input_path: PathBuf,
++    pub input_data: Vec<u8>,
+ }
+ 
+ #[repr(u8)]
+diff --git a/distributed/crates/coordinator/src/cli/handler_prove.rs b/distributed/crates/coordinator/src/cli/handler_prove.rs
+index 71cf451b..f67c519e 100644
+--- a/distributed/crates/coordinator/src/cli/handler_prove.rs
++++ b/distributed/crates/coordinator/src/cli/handler_prove.rs
+@@ -24,11 +24,16 @@ pub async fn handle(
+     let channel = Channel::from_shared(coordinator_url)?.connect().await?;
+     let mut client = ZiskDistributedApiClient::new(channel);
+ 
++    // Read input file
++    let input_data = std::fs::read(&input_path)?;
++    info!("Read {} bytes from input file: {}", input_data.len(), input_path);
++
+     let launch_proof_request = LaunchProofRequest {
+         block_id: "0x1234567890abcdef".into(), // TODO! Placeholder block ID
+         compute_capacity,
+         input_path,
+         simulated_node,
++        input_data,
+     };
+ 
+     // Make the RPC call
+diff --git a/distributed/crates/coordinator/src/coordinator.rs b/distributed/crates/coordinator/src/coordinator.rs
+index 5076255e..90143100 100644
+--- a/distributed/crates/coordinator/src/coordinator.rs
++++ b/distributed/crates/coordinator/src/coordinator.rs
+@@ -298,6 +298,7 @@ impl Coordinator {
+                 request.block_id.clone(),
+                 required_compute_capacity,
+                 request.input_path.clone(),
++                request.input_data.clone(),
+                 request.simulated_node,
+             )
+             .await?;
+@@ -425,6 +426,7 @@ impl Coordinator {
+         block_id: BlockId,
+         required_compute_capacity: ComputeCapacity,
+         input_path: String,
++        input_data: Vec<u8>,
+         simulated_node: Option<u32>,
+     ) -> CoordinatorResult<Job> {
+         let execution_mode = if let Some(node) = simulated_node {
+@@ -445,6 +447,7 @@ impl Coordinator {
+         Ok(Job::new(
+             block_id,
+             PathBuf::from(input_path),
++            input_data,
+             required_compute_capacity,
+             selected_workers,
+             partitions,
+@@ -517,6 +520,7 @@ impl Coordinator {
+                     total_workers: active_workers.len() as u32,
+                     worker_allocation: job.partitions[rank_id].clone(),
+                     job_compute_units: required_compute_capacity,
++                    input_data: job.block.input_data.clone(),
+                 }),
+             };
+             let req = CoordinatorMessageDto::ExecuteTaskRequest(req);
+diff --git a/distributed/crates/grpc-api/proto/zisk_distributed_api.proto b/distributed/crates/grpc-api/proto/zisk_distributed_api.proto
+index 7776a2e4..3d5deea4 100644
+--- a/distributed/crates/grpc-api/proto/zisk_distributed_api.proto
++++ b/distributed/crates/grpc-api/proto/zisk_distributed_api.proto
+@@ -55,8 +55,9 @@ message WorkersListRequest {
+ message LaunchProofRequest {
+   string block_id = 1;
+   uint32 compute_capacity = 2;
+-  string input_path = 3;
++  string input_path = 3;  // Deprecated: kept for backward compatibility
+   optional uint32 simulated_node = 4; // If set, indicates this is a simulated worker
++  bytes input_data = 5;  // Binary input data to be distributed to workers
+ }
+ 
+ // ============================================================================
+@@ -223,11 +224,12 @@ enum TaskType {
+ 
+ message ContributionParams {
+   string block_id = 1;
+-  string input_path = 2;
++  string input_path = 2;  // Deprecated: kept for backward compatibility
+   uint32 rank_id = 3;
+   uint32 total_workers = 4;
+   repeated uint32 worker_allocation = 5;
+   uint32 job_compute_units = 6;
++  bytes input_data = 7;  // Binary input data sent from coordinator to worker
+ }
+ 
+ message ProveParams {
+diff --git a/distributed/crates/grpc-api/src/conversions.rs b/distributed/crates/grpc-api/src/conversions.rs
+index 8f53208b..1d599c32 100644
+--- a/distributed/crates/grpc-api/src/conversions.rs
++++ b/distributed/crates/grpc-api/src/conversions.rs
+@@ -155,6 +155,7 @@ impl From<LaunchProofRequestDto> for LaunchProofRequest {
+             compute_capacity: dto.compute_capacity,
+             input_path: dto.input_path,
+             simulated_node: dto.simulated_node,
++            input_data: dto.input_data,
+         }
+     }
+ }
+@@ -166,6 +167,7 @@ impl From<LaunchProofRequest> for LaunchProofRequestDto {
+             compute_capacity: req.compute_capacity,
+             input_path: req.input_path,
+             simulated_node: req.simulated_node,
++            input_data: req.input_data,
+         }
+     }
+ }
+@@ -294,6 +296,7 @@ impl From<ContributionParamsDto> for ContributionParams {
+             total_workers: dto.total_workers,
+             worker_allocation: dto.worker_allocation,
+             job_compute_units: dto.job_compute_units.compute_units,
++            input_data: dto.input_data,
+         }
+     }
+ }
+diff --git a/distributed/crates/worker/src/worker_node.rs b/distributed/crates/worker/src/worker_node.rs
+index dba5dcc7..5d488410 100644
+--- a/distributed/crates/worker/src/worker_node.rs
++++ b/distributed/crates/worker/src/worker_node.rs
+@@ -475,14 +475,39 @@ impl WorkerNodeGrpc {
+             return Err(anyhow!("Expected ContributionParams for Partial Contribution task"));
+         };
+ 
+-        let job_id = JobId::from(request.job_id);
++        let job_id = JobId::from(request.job_id.clone());
+         let input_path =
+             self.worker_config.worker.inputs_folder.join(PathBuf::from(params.input_path));
+ 
++        // If we received binary input data, write it to the input_path
++        if !params.input_data.is_empty() {
++            // Ensure parent directory exists
++            if let Some(parent) = input_path.parent() {
++                std::fs::create_dir_all(parent).map_err(|e| {
++                    anyhow!("Failed to create directory {}: {}", parent.display(), e)
++                })?;
++            }
++
++            std::fs::write(&input_path, &params.input_data).map_err(|e| {
++                anyhow!("Failed to write input data to {}: {}", input_path.display(), e)
++            })?;
++
++            info!(
++                "Received {} bytes of input data for job {}, written to {}",
++                params.input_data.len(),
++                request.job_id,
++                input_path.display()
++            );
++        }
++
+         // Validate that input_path is a subdirectory of inputs_folder
+         Self::validate_subdir(&self.worker_config.worker.inputs_folder, &input_path)?;
+ 
+-        let block = BlockContext { block_id: BlockId::from(params.block_id), input_path };
++        let block = BlockContext {
++            block_id: BlockId::from(params.block_id),
++            input_path,
++            input_data: Vec::new(),  // Worker doesn't need to store input_data since it's already on disk
++        };
+ 
+         let job = self.worker.new_job(
+             job_id,
