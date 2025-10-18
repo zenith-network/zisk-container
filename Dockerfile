@@ -10,7 +10,7 @@ FROM nvidia/cuda:12.9.1-devel-ubuntu22.04
 # Build Arguments
 # -----------------------------------------------------------------------------
 ARG DEBIAN_FRONTEND=noninteractive
-ARG ZISK_VERSION=0.12.0
+ARG CUSTOM_ZISK_BRANCH=pre-develop-0.13.0
 ARG CUDA_ARCH=sm_89
 ARG CACHE_BUSTER=123
 
@@ -77,8 +77,8 @@ RUN rustup toolchain list && \
 # -----------------------------------------------------------------------------
 WORKDIR /build
 
-# Clone Zisk source code.
-RUN git clone --depth 1 --branch v${ZISK_VERSION} \
+# Clone Zisk repository at specific version
+RUN git clone --depth 1 --branch ${CUSTOM_ZISK_BRANCH} \
     https://github.com/0xPolygonHermez/zisk.git
 
 WORKDIR /build/zisk
