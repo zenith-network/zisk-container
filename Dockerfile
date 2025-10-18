@@ -88,6 +88,10 @@ COPY distributed-input.patch .
 RUN git apply distributed-input.patch && \
     echo "Applied distributed-input.patch successfully"
 
+# Increase witness size from 4GB to 6GB.
+# NOTE: This is a workaround for large programs, like proving Ethereum block 23,592,050.
+RUN sed -i 's/#define INITIAL_TRACE_SIZE (uint64_t)0x100000000/#define INITIAL_TRACE_SIZE (uint64_t)0x180000000/' emulator-asm/src/main.c
+
 # Build Zisk with GPU features enabled
 RUN ulimit -n 65536 && \
     cargo build --release --features gpu && \
