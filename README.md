@@ -36,10 +36,44 @@ wget https://github.com/0xPolygonHermez/zisk-ethproofs/raw/refs/heads/develop/bi
 wget https://github.com/0xPolygonHermez/zisk-eth-client/raw/refs/heads/main/inputs/22767493_185_14.bin
 ```
 
-Then setup ROM and generate proof in the same container instance:
+[WARNING]
+====
+At this point I tried proving inside docker (firstly setup ROM, then generate proof):
 
-```bash
+[source,sh]
+----
 docker run --gpus all -v $(pwd):/data zisk-docker bash -c \
   "cargo-zisk rom-setup -e /data/zec-keccakf-k256-sha2-bn254.elf && \
    cargo-zisk prove -e /data/zec-keccakf-k256-sha2-bn254.elf -i /data/22767493_185_14.bin -o /tmp/out -a -u"
-```
+----
+
+However, it fails with:
+
+[source]
+----
+2025-10-18T11:20:11.504343Z [rank=0] INFO: >>> COMPUTE_MINIMAL_TRACE
+2025-10-18T11:20:21.619790Z [rank=0] ERROR: Semaphore '/ZISK_23116_0_MT_chunk_done' error: WaitTimeout
+2025-10-18T11:20:21.619858Z [rank=0] ERROR: Semaphore '/ZISK_23115_0_MO_chunk_done' error: WaitTimeout
+munmap_chunk(): invalid pointer
+----
+
+Not sure why, but we have to be proving **outside** of the docker.
+====
+
+We extract ZisK from container and put in on the host:
+
+[source,sh]
+----
+docker run --name zisk-temp zisk-docker
+rm -rf ~/.zisk
+docker cp zisk-temp:/root/.zisk ~/.zisk
+docker rm zisk-temp
+----
+
+Then we setup ROM and finally run proving:
+
+[source,sh]
+----
+cargo-zisk rom-setup -e ./zec-keccakf-k256-sha2-bn254.elf
+cargo-zisk prove -e ./zec-keccakf-k256-sha2-bn254.elf -i ./22767493_185_14.bin -o /tmp/out -a -u
+----
