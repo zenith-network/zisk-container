@@ -1,16 +1,18 @@
-# Zisk Docker
+= Zisk Docker
 
 Docker image for Zisk pre-release v0.13 with GPU support, enhanced with input distribution over gRPC.
 
-## Build
+== Build
 
-```bash
+[source,sh]
+----
 docker build -t zisk-docker .
-```
+----
 
-## Run
+== Run
 
-```bash
+[source,sh]
+----
 # Check version
 docker run --rm zisk-docker
 
@@ -25,16 +27,17 @@ docker run -it zisk-docker bash
 
 # With GPU support
 docker run --gpus all -it zisk-docker zisk-worker
-```
+----
 
-## Proving Example
+== Proving Example
 
 Firstly download test files:
 
-```bash
+[source,sh]
+----
 wget https://github.com/0xPolygonHermez/zisk-ethproofs/raw/refs/heads/develop/bin/ethproofs-client/elf/zec-keccakf-k256-sha2-bn254.elf
 wget https://github.com/0xPolygonHermez/zisk-eth-client/raw/refs/heads/main/inputs/22767493_185_14.bin
-```
+----
 
 [WARNING]
 ====
