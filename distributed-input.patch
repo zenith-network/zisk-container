@@ -1,5 +1,24 @@
+From a4b8871c7bfeba11efc41fae0e6c41e935c19608 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andrzej=20Bro=C5=84ski?= <andrzej1_1@o2.pl>
+Date: Fri, 10 Oct 2025 10:10:50 +0200
+Subject: [PATCH] Replace local proving input with a distributed data.
+
+Quick implementation to workaround main ZisK limitation in distributed
+proving. Now input data must be available on the submitter machine
+**only**, then it gets passed through the coordinator and send to
+workers.
+---
+ distributed/crates/common/src/dto.rs          |  2 ++
+ distributed/crates/common/src/types.rs        |  4 ++-
+ .../coordinator/src/cli/handler_prove.rs      |  5 ++++
+ .../crates/coordinator/src/coordinator.rs     |  4 +++
+ .../grpc-api/proto/zisk_distributed_api.proto |  6 ++--
+ .../crates/grpc-api/src/conversions.rs        |  3 ++
+ distributed/crates/worker/src/worker_node.rs  | 29 +++++++++++++++++--
+ 7 files changed, 48 insertions(+), 5 deletions(-)
+
 diff --git a/distributed/crates/common/src/dto.rs b/distributed/crates/common/src/dto.rs
-index e8706d43..94de66d6 100644
+index c786c09f..781985f6 100644
 --- a/distributed/crates/common/src/dto.rs
 +++ b/distributed/crates/common/src/dto.rs
 @@ -67,6 +67,7 @@ pub struct LaunchProofRequestDto {
@@ -19,10 +38,10 @@ index e8706d43..94de66d6 100644
  
  pub struct ProveParamsDto {
 diff --git a/distributed/crates/common/src/types.rs b/distributed/crates/common/src/types.rs
-index 85ee80bc..8e039bb0 100644
+index 6ad0cac3..b529616d 100644
 --- a/distributed/crates/common/src/types.rs
 +++ b/distributed/crates/common/src/types.rs
-@@ -243,6 +243,7 @@ impl Job {
+@@ -257,6 +257,7 @@ impl Job {
      pub fn new(
          block_id: BlockId,
          input_path: PathBuf,
@@ -30,8 +49,8 @@ index 85ee80bc..8e039bb0 100644
          compute_capacity: ComputeCapacity,
          selected_workers: Vec<WorkerId>,
          partitions: Vec<Vec<u32>>,
-@@ -253,7 +254,7 @@ impl Job {
-             start_time: Utc::now(),
+@@ -267,7 +268,7 @@ impl Job {
+             start_times: HashMap::new(),
              duration_ms: None,
              state: JobState::Created,
 -            block: BlockContext { block_id, input_path },
@@ -39,7 +58,7 @@ index 85ee80bc..8e039bb0 100644
              compute_capacity,
              workers: selected_workers,
              agg_worker_id: None,
-@@ -363,6 +364,7 @@ pub struct JobResult {
+@@ -390,6 +391,7 @@ pub struct JobResult {
  pub struct BlockContext {
      pub block_id: BlockId,
      pub input_path: PathBuf,
@@ -69,10 +88,10 @@ index 71cf451b..f67c519e 100644
  
      // Make the RPC call
 diff --git a/distributed/crates/coordinator/src/coordinator.rs b/distributed/crates/coordinator/src/coordinator.rs
-index 5076255e..90143100 100644
+index b748cabc..5629ad7e 100644
 --- a/distributed/crates/coordinator/src/coordinator.rs
 +++ b/distributed/crates/coordinator/src/coordinator.rs
-@@ -298,6 +298,7 @@ impl Coordinator {
+@@ -315,6 +315,7 @@ impl Coordinator {
                  request.block_id.clone(),
                  required_compute_capacity,
                  request.input_path.clone(),
@@ -80,7 +99,7 @@ index 5076255e..90143100 100644
                  request.simulated_node,
              )
              .await?;
-@@ -425,6 +426,7 @@ impl Coordinator {
+@@ -514,6 +515,7 @@ impl Coordinator {
          block_id: BlockId,
          required_compute_capacity: ComputeCapacity,
          input_path: String,
@@ -88,7 +107,7 @@ index 5076255e..90143100 100644
          simulated_node: Option<u32>,
      ) -> CoordinatorResult<Job> {
          let execution_mode = if let Some(node) = simulated_node {
-@@ -445,6 +447,7 @@ impl Coordinator {
+@@ -534,6 +536,7 @@ impl Coordinator {
          Ok(Job::new(
              block_id,
              PathBuf::from(input_path),
@@ -96,7 +115,7 @@ index 5076255e..90143100 100644
              required_compute_capacity,
              selected_workers,
              partitions,
-@@ -517,6 +520,7 @@ impl Coordinator {
+@@ -606,6 +609,7 @@ impl Coordinator {
                      total_workers: active_workers.len() as u32,
                      worker_allocation: job.partitions[rank_id].clone(),
                      job_compute_units: required_compute_capacity,
@@ -105,7 +124,7 @@ index 5076255e..90143100 100644
              };
              let req = CoordinatorMessageDto::ExecuteTaskRequest(req);
 diff --git a/distributed/crates/grpc-api/proto/zisk_distributed_api.proto b/distributed/crates/grpc-api/proto/zisk_distributed_api.proto
-index 7776a2e4..3d5deea4 100644
+index e1d86b81..aa3aece4 100644
 --- a/distributed/crates/grpc-api/proto/zisk_distributed_api.proto
 +++ b/distributed/crates/grpc-api/proto/zisk_distributed_api.proto
 @@ -55,8 +55,9 @@ message WorkersListRequest {
@@ -134,7 +153,7 @@ index 7776a2e4..3d5deea4 100644
  
  message ProveParams {
 diff --git a/distributed/crates/grpc-api/src/conversions.rs b/distributed/crates/grpc-api/src/conversions.rs
-index 8f53208b..1d599c32 100644
+index 82da9bf2..66e6dc12 100644
 --- a/distributed/crates/grpc-api/src/conversions.rs
 +++ b/distributed/crates/grpc-api/src/conversions.rs
 @@ -155,6 +155,7 @@ impl From<LaunchProofRequestDto> for LaunchProofRequest {
@@ -162,10 +181,10 @@ index 8f53208b..1d599c32 100644
      }
  }
 diff --git a/distributed/crates/worker/src/worker_node.rs b/distributed/crates/worker/src/worker_node.rs
-index dba5dcc7..5d488410 100644
+index a672daf7..109dea34 100644
 --- a/distributed/crates/worker/src/worker_node.rs
 +++ b/distributed/crates/worker/src/worker_node.rs
-@@ -475,14 +475,39 @@ impl WorkerNodeGrpc {
+@@ -474,14 +474,39 @@ impl WorkerNodeGrpc {
              return Err(anyhow!("Expected ContributionParams for Partial Contribution task"));
          };
  
@@ -207,3 +226,6 @@ index dba5dcc7..5d488410 100644
  
          let job = self.worker.new_job(
              job_id,
+-- 
+2.51.0
+

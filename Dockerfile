@@ -10,8 +10,8 @@ FROM nvidia/cuda:12.9.1-devel-ubuntu22.04
 # Build Arguments
 # -----------------------------------------------------------------------------
 ARG DEBIAN_FRONTEND=noninteractive
-# Currently at b9acdeecf5601f89824570e4337cb084c4ca501e.
-ARG CUSTOM_ZISK_BRANCH=pre-develop-0.12.1
+# Currently at c5124aa09ab4976dda25e2ad5139a1e389a34b70.
+ARG CUSTOM_ZISK_BRANCH=fix/fcall-sqrt-0.13.0
 ARG CUDA_ARCH=sm_89
 ARG CACHE_BUSTER=123
 
@@ -84,10 +84,10 @@ RUN git clone --depth 1 --branch ${CUSTOM_ZISK_BRANCH} \
 
 WORKDIR /build/zisk
 
-# Copy and apply custom patch
-COPY distributed-input.patch .
-RUN git apply distributed-input.patch && \
-    echo "Applied distributed-input.patch successfully"
+# Copy and apply custom patches.
+COPY distributed-input.patch grpc-limit.patch .
+RUN git apply distributed-input.patch grpc-limit.patch && \
+    echo "Distributed input patch applied successfully!"
 
 # Increase witness size from 4GB to 6GB.
 # NOTE: This is a workaround for large programs, like proving Ethereum block 23,592,050.
