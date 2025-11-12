@@ -1,0 +1,34 @@
+From 6dad729f34ce165c6120aa9f1b5025fe65aa5930 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andrzej=20Bro=C5=84ski?= <koxu1996@gmail.com>
+Date: Wed, 12 Nov 2025 11:36:05 +0000
+Subject: [PATCH] Prevent shmem files from being unlinked.
+
+---
+ emulator-asm/asm-runner/src/shmem_utils.rs | 11 -----------
+ 1 file changed, 11 deletions(-)
+
+diff --git a/emulator-asm/asm-runner/src/shmem_utils.rs b/emulator-asm/asm-runner/src/shmem_utils.rs
+index 430fe94d..5a5563ab 100644
+--- a/emulator-asm/asm-runner/src/shmem_utils.rs
++++ b/emulator-asm/asm-runner/src/shmem_utils.rs
+@@ -64,17 +64,6 @@ impl<H: AsmShmemHeader> AsmSharedMemory<H> {
+                 return Err(anyhow::anyhow!("shm_open('{name}') failed: {err}"));
+             }
+ 
+-            // Unlink the shared memory object to ensure it is removed after use
+-            // This is necessary to avoid leaving stale shared memory objects
+-            // in the system, especially if the program crashes or exits unexpectedly.
+-            // Note: This does not affect the current mapping, it just ensures that
+-            // the shared memory object is removed from the filesystem namespace.
+-            if shm_unlink(c_name.as_ptr()) != 0 {
+-                let err = io::Error::last_os_error();
+-                close(fd);
+-                return Err(anyhow::anyhow!("shm_unlink('{name}') failed: {err}"));
+-            }
+-
+             #[cfg(not(all(target_os = "linux", target_arch = "x86_64")))]
+             let flags = MAP_SHARED;
+             #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+-- 
+2.34.1
+
