@@ -35,8 +35,8 @@ Firstly download test files:
 
 [source,sh]
 ----
-wget https://github.com/0xPolygonHermez/zisk-ethproofs/raw/refs/heads/develop/bin/ethproofs-client/elf/zec-keccakf-k256-sha2-bn254.elf
-wget https://github.com/0xPolygonHermez/zisk-eth-client/raw/refs/heads/main/inputs/22767493_185_14.bin
+wget https://github.com/0xPolygonHermez/zisk-ethproofs/raw/a0e6b65951dfb9a001e8a203fc69372106bd4c5e/bin/ethproofs-client/elf/zec-keccakf-k256-sha2-bn254.elf
+wget https://github.com/0xPolygonHermez/zisk-eth-client/blob/530f732f4d45d811103bd2db9700edcdb69c66cb/inputs/22767493_185_14.bin
 ----
 
 [WARNING]
