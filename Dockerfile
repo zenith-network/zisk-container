@@ -85,8 +85,8 @@ RUN git clone --depth 1 --branch ${CUSTOM_ZISK_BRANCH} \
 WORKDIR /build/zisk
 
 # Copy and apply custom patches.
-COPY distributed-input.patch grpc-limit.patch prevent-shmem-unlink.patch .
-RUN git apply distributed-input.patch grpc-limit.patch prevent-shmem-unlink.patch && \
+COPY distributed-input.patch grpc-limit.patch .
+RUN git apply distributed-input.patch grpc-limit.patch && \
     echo "Distributed input patch applied successfully!"
 
 # Increase witness size from 4GB to 6GB.
