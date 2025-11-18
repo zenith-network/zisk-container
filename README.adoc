@@ -45,12 +45,12 @@ Run ROM setup:
 
 [source,sh]
 ----
-cargo-zisk rom-setup -e /data/zec-keccakf-k256-sha2-bn254.elf
+cargo-zisk rom-setup -e ./zec-keccakf-k256-sha2-bn254.elf
 ----
 
 Prove block:
 
 [source,sh]
 ----
-cargo-zisk prove -e /data/zec-keccakf-k256-sha2-bn254.elf -i /data/22767493_185_14.bin -o /tmp/out -a -u
+cargo-zisk prove -e ./zec-keccakf-k256-sha2-bn254.elf -i ./22767493_185_14.bin -o /tmp/out -a -u
 ----
