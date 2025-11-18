@@ -2,56 +2,38 @@
 
 Docker image for Zisk pre-release v0.14 with GPU support.
 
-== Build
+== Setup
 
 [source,sh]
 ----
+# Clone this repository.
+git clone https://github.com/zenith-network/zisk-container.git && cd ./zisk-container
+
+# Build image.
 docker build -t zisk-docker .
-----
 
-== Run
-
-[source,sh]
-----
-# Check version
-docker run --rm zisk-docker
-
-# Run worker
-docker run -it zisk-docker zisk-worker
-
-# Run coordinator
-docker run -it zisk-docker zisk-coordinator
-
-# Interactive shell
-docker run -it zisk-docker bash
-
-# With GPU support
-docker run --gpus all -it zisk-docker zisk-worker
-----
-
-== GPU Setup and Environment Extraction
-
-To dump ZisK with GPU support to your host run:
-
-[source,sh]
-----
-# Clean up existing .zisk directory on host
+# Clean up pre-existing `.zisk` directory on host.
 rm -rf ~/.zisk
 mkdir -p ~/.zisk
 
-# Run check-setup in container, then copy all .zisk content to host
-docker run --gpus all --rm -v ~/.zisk:/host-zisk zisk-docker bash -c \
-  "cargo-zisk check-setup -a && cp -r /root/.zisk/* /host-zisk/"
+# Copy `.zisk` content from the image to host.
+docker run --rm -v ~/.zisk:/host-zisk zisk-docker bash -c \
+  "cp -r /root/.zisk/* /host-zisk/"
+
+# Put ZisK binaries in PATH.
+echo 'export PATH="$HOME/.zisk/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
 
 # Fix permissions.
 sudo chown -R ubuntu:ubuntu /home/ubuntu/.zisk
+
+# Generate tree files.
+cargo-zisk check-setup -a
 ----
 
-This will populate `~/.zisk` on the host with all necessary files from the container plus the check-setup generated assets. After this, you can use `cargo-zisk` commands directly on the host with GPU acceleration.
+== Usage
 
-== Proving Example
-
-Firstly download test files:
+Download test files:
 
 [source,sh]
 ----
@@ -59,45 +41,16 @@ wget https://github.com/0xPolygonHermez/zisk-ethproofs/raw/a0e6b65951dfb9a001e8a
 wget https://github.com/0xPolygonHermez/zisk-eth-client/blob/530f732f4d45d811103bd2db9700edcdb69c66cb/inputs/22767493_185_14.bin
 ----
 
-[WARNING]
-====
-At this point I tried proving inside docker (firstly setup ROM, then generate proof):
+Run ROM setup:
 
 [source,sh]
 ----
-docker run --gpus all -v $(pwd):/data zisk-docker bash -c \
-  "cargo-zisk check-setup -a && \
-   cargo-zisk rom-setup -e /data/zec-keccakf-k256-sha2-bn254.elf && \
-   cargo-zisk prove -e /data/zec-keccakf-k256-sha2-bn254.elf -i /data/22767493_185_14.bin -o /tmp/out -a -u"
+cargo-zisk rom-setup -e /data/zec-keccakf-k256-sha2-bn254.elf
 ----
 
-However, it fails with:
-
-[source]
-----
-2025-10-18T11:20:11.504343Z [rank=0] INFO: >>> COMPUTE_MINIMAL_TRACE
-2025-10-18T11:20:21.619790Z [rank=0] ERROR: Semaphore '/ZISK_23116_0_MT_chunk_done' error: WaitTimeout
-2025-10-18T11:20:21.619858Z [rank=0] ERROR: Semaphore '/ZISK_23115_0_MO_chunk_done' error: WaitTimeout
-munmap_chunk(): invalid pointer
-----
-
-Not sure why, but we have to be proving **outside** of the docker.
-====
-
-We extract ZisK from container and put in on the host:
+Prove block:
 
 [source,sh]
 ----
-docker run --name zisk-temp zisk-docker
-rm -rf ~/.zisk
-docker cp zisk-temp:/root/.zisk ~/.zisk
-docker rm zisk-temp
-----
-
-Then we setup ROM and finally run proving:
-
-[source,sh]
-----
-cargo-zisk rom-setup -e ./zec-keccakf-k256-sha2-bn254.elf
-cargo-zisk prove -e ./zec-keccakf-k256-sha2-bn254.elf -i ./22767493_185_14.bin -o /tmp/out -a -u
+cargo-zisk prove -e /data/zec-keccakf-k256-sha2-bn254.elf -i /data/22767493_185_14.bin -o /tmp/out -a -u
 ----
