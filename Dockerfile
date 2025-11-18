@@ -76,6 +76,10 @@ WORKDIR /build/zisk
 # NOTE: This is a workaround for large programs, like proving Ethereum block 23,592,050.
 RUN sed -i 's/#define INITIAL_TRACE_SIZE (uint64_t)0x100000000/#define INITIAL_TRACE_SIZE (uint64_t)0x180000000/' emulator-asm/src/main.c
 
+# Fix flaky build.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc-riscv64-unknown-elf
+
 # Build Zisk with GPU features enabled
 RUN ulimit -n 65536 && \
     cargo build --release --features gpu && \
