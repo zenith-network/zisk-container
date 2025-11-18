@@ -10,10 +10,10 @@ FROM nvidia/cuda:12.9.1-devel-ubuntu22.04
 # Build Arguments
 # -----------------------------------------------------------------------------
 ARG DEBIAN_FRONTEND=noninteractive
-# Currently at c5124aa09ab4976dda25e2ad5139a1e389a34b70.
-ARG CUSTOM_ZISK_BRANCH=fix/fcall-sqrt-0.13.0
+# Currently at 7bfb2fbb8e3bb888a9dce5509f5f5bf75bf79d79.
+ARG CUSTOM_ZISK_BRANCH=pre-develop-0.14.0
 ARG CUDA_ARCH=sm_89
-ARG CACHE_BUSTER=123
+ARG ZISK_PROVINGKEY_VERSION=0.14.0
 
 # -----------------------------------------------------------------------------
 # Environment Variables
@@ -60,18 +60,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
     sh -s -- -y --default-toolchain ${RUST_VERSION} --profile minimal
 
-# -----------------------------------------------------------------------------
-# Zisk Installation via ziskup
-# -----------------------------------------------------------------------------
-# NOTE: Cache buster can be incremented to force Zisk update
-RUN echo "cache-buster-${CACHE_BUSTER}" && \
-    curl -sSf https://raw.githubusercontent.com/0xPolygonHermez/zisk/main/ziskup/install.sh | \
-    SETUP_KEY=proving bash -s -- --nokey
-
-# Verify Zisk toolchain installation (includes riscv64ima-zisk-zkvm target)
-RUN rustup toolchain list && \
-    rustup toolchain list | grep -q zisk || \
-    (echo "ERROR: zisk toolchain not found after installation" && exit 1)
 
 # -----------------------------------------------------------------------------
 # Custom Zisk Build with GPU Support
@@ -83,11 +71,6 @@ RUN git clone --depth 1 --branch ${CUSTOM_ZISK_BRANCH} \
     https://github.com/0xPolygonHermez/zisk.git
 
 WORKDIR /build/zisk
-
-# Copy and apply custom patches.
-COPY distributed-input.patch grpc-limit.patch .
-RUN git apply distributed-input.patch grpc-limit.patch && \
-    echo "Distributed input patch applied successfully!"
 
 # Increase witness size from 4GB to 6GB.
 # NOTE: This is a workaround for large programs, like proving Ethereum block 23,592,050.
@@ -117,6 +100,22 @@ RUN mkdir -p /root/.zisk/zisk/emulator-asm && \
     cp -r emulator-asm/src /root/.zisk/zisk/emulator-asm/ && \
     cp emulator-asm/Makefile /root/.zisk/zisk/emulator-asm/ && \
     cp -r lib-c /root/.zisk/zisk/
+
+# -----------------------------------------------------------------------------
+# Install SDK Toolchain and Proving Key
+# -----------------------------------------------------------------------------
+# Install SDK toolchain using the compiled cargo-zisk binary
+RUN cargo-zisk sdk install-toolchain
+
+# Verify Zisk toolchain installation (includes riscv64ima-zisk-zkvm target)
+RUN rustup toolchain list && \
+    rustup toolchain list | grep -q zisk || \
+    (echo "ERROR: zisk toolchain not found after installation" && exit 1)
+
+# Download and extract proving key
+ARG ZISK_PROVINGKEY_VERSION
+RUN curl -L "https://storage.googleapis.com/zisk-setup/zisk-provingkey-${ZISK_PROVINGKEY_VERSION}.tar.gz" | \
+    tar -xz -C /root/.zisk
 
 # Clean up build artifacts to reduce image size
 WORKDIR /

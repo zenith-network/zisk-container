@@ -29,6 +29,26 @@ docker run -it zisk-docker bash
 docker run --gpus all -it zisk-docker zisk-worker
 ----
 
+== GPU Setup and Environment Extraction
+
+To dump ZisK with GPU support to your host run:
+
+[source,sh]
+----
+# Clean up existing .zisk directory on host
+rm -rf ~/.zisk
+mkdir -p ~/.zisk
+
+# Run check-setup in container, then copy all .zisk content to host
+docker run --gpus all --rm -v ~/.zisk:/host-zisk zisk-docker bash -c \
+  "cargo-zisk check-setup -a && cp -r /root/.zisk/* /host-zisk/"
+
+# Fix permissions.
+sudo chown -R ubuntu:ubuntu /home/ubuntu/.zisk
+----
+
+This will populate `~/.zisk` on the host with all necessary files from the container plus the check-setup generated assets. After this, you can use `cargo-zisk` commands directly on the host with GPU acceleration.
+
 == Proving Example
 
 Firstly download test files:
