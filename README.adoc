@@ -1,6 +1,6 @@
 = Zisk Docker
 
-Docker image for Zisk pre-release v0.13 with GPU support, enhanced with input distribution over gRPC.
+Docker image for Zisk pre-release v0.14 with GPU support.
 
 == Build
 
