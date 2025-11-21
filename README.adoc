@@ -31,13 +31,13 @@ sudo chown -R ubuntu:ubuntu /home/ubuntu/.zisk
 cargo-zisk check-setup -a
 ----
 
-== Usage
+== Usage [OUTDATED]
 
 Download test files:
 
 [source,sh]
 ----
-wget https://github.com/0xPolygonHermez/zisk-ethproofs/raw/a0e6b65951dfb9a001e8a203fc69372106bd4c5e/bin/ethproofs-client/elf/zec-keccakf-k256-sha2-bn254.elf
+wget https://github.com/0xPolygonHermez/zisk-eth-client/raw/12720e34d0fcd5c3f638b90628bd5a2f53fb1b53/bin/client/rsp/elf/zec-rsp.elf
 wget https://github.com/0xPolygonHermez/zisk-eth-client/blob/530f732f4d45d811103bd2db9700edcdb69c66cb/inputs/22767493_185_14.bin
 ----
 
@@ -45,12 +45,12 @@ Run ROM setup:
 
 [source,sh]
 ----
-cargo-zisk rom-setup -e ./zec-keccakf-k256-sha2-bn254.elf
+cargo-zisk rom-setup -e ./zec-rsp.elf
 ----
 
 Prove block:
 
 [source,sh]
 ----
-cargo-zisk prove -e ./zec-keccakf-k256-sha2-bn254.elf -i ./22767493_185_14.bin -o /tmp/out -a -u
+cargo-zisk prove -e ./zec-rsp.elf -i ./22767493_185_14.bin -o /tmp/out -a -u
 ----
