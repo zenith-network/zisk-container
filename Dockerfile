@@ -11,7 +11,7 @@ FROM nvidia/cuda:12.9.1-devel-ubuntu22.04
 # -----------------------------------------------------------------------------
 ARG DEBIAN_FRONTEND=noninteractive
 # Currently at 7bfb2fbb8e3bb888a9dce5509f5f5bf75bf79d79.
-ARG CUSTOM_ZISK_BRANCH=pre-develop-0.14.0
+ARG CUSTOM_ZISK_BRANCH=v0.14.0
 ARG CUDA_ARCH=sm_89
 ARG ZISK_PROVINGKEY_VERSION=0.14.0
 
