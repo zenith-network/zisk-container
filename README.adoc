@@ -31,26 +31,27 @@ sudo chown -R ubuntu:ubuntu /home/ubuntu/.zisk
 cargo-zisk check-setup -a
 ----
 
-== Usage [OUTDATED]
+== Usage
 
-Download test files:
+TIP: Example guest and input file is provided in this repository - see `./assets`.
 
+. Run ROM setup:
++
 [source,sh]
 ----
-wget https://github.com/0xPolygonHermez/zisk-eth-client/raw/12720e34d0fcd5c3f638b90628bd5a2f53fb1b53/bin/client/rsp/elf/zec-rsp.elf
-wget https://github.com/0xPolygonHermez/zisk-eth-client/blob/530f732f4d45d811103bd2db9700edcdb69c66cb/inputs/22767493_185_14.bin
+cargo-zisk rom-setup -e ./zisk-reth-proofs.elf
 ----
 
-Run ROM setup:
-
+. Emulate execution - just to verify it works without crashing:
++
 [source,sh]
 ----
-cargo-zisk rom-setup -e ./zec-rsp.elf
+ziskemu -e ./zisk-reth-proofs.elf -i ./23881681.bin -m
 ----
 
-Prove block:
-
+. Prove block:
++
 [source,sh]
 ----
-cargo-zisk prove -e ./zec-rsp.elf -i ./22767493_185_14.bin -o /tmp/out -a -u
+cargo-zisk prove -e ./zisk-reth-proofs.elf -i ./23881681.bin -o /tmp/out -a -u
 ----
