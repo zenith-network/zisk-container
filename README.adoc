@@ -33,20 +33,22 @@ cargo-zisk check-setup -a
 
 == Usage
 
-TIP: Example guest and input file is provided in this repository - see `./assets`.
+TIP: Inside `./assets` you will find an example https://github.com/zenith-network/reth-proofs[Ethereum proving guest ELF] and input file for **block 23,881,681**.
 
-. Run ROM setup:
-+
-[source,sh]
-----
-cargo-zisk rom-setup -e ./zisk-reth-proofs.elf
-----
-
-. Emulate execution - just to verify it works without crashing:
+. Emulate execution - just to verify everything works without crashing:
 +
 [source,sh]
 ----
 ziskemu -e ./zisk-reth-proofs.elf -i ./23881681.bin -m
+----
++
+IMPORTANT: If it crashes, in 99% cases it means guest program issue, not a ZisK bug. The 1% cases is a bug in ZisK precompiles (already happened with KZG precompile).
+
+. Run ROM setup - required for proving:
++
+[source,sh]
+----
+cargo-zisk rom-setup -e ./zisk-reth-proofs.elf
 ----
 
 . Prove block:
@@ -55,3 +57,11 @@ ziskemu -e ./zisk-reth-proofs.elf -i ./23881681.bin -m
 ----
 cargo-zisk prove -e ./zisk-reth-proofs.elf -i ./23881681.bin -o /tmp/out -a -u
 ----
+
+== Important
+
+CAUTION: If you try to compile ZisK on multiple machines separately, you will get slightly different output files causing mismatch when proving.
+
+When running ZisK workers on multiple machines, make you sure you use **exactly the same** binaries, emulator files etc. Otherwise you will get different "global challenge" generated, causing proving to fail.
+
+The easiest way is to build ZisK image on one machine only, then distribute it.
